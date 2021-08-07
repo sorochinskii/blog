@@ -2,7 +2,13 @@
 layout: post
 title: "Указатели в Python"
 date: 2021-08-06 00:00:00 -0000
-categories: python pointers translate
+categories: 
+  - blog
+tags:
+  - python
+  - pointers
+  - translation
+---
 ---
 
 [Оригинальный текст Pointers in Python: What's the Point?](https://realpython.com/pointers-in-python/)
