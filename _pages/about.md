@@ -3,4 +3,4 @@ permalink: /about/
 title: "About"
 ---
 
-Yet another IT-blog. Some translates, some non translates posts.
+Yet another IT-blog. Some translations, some non translations posts.
