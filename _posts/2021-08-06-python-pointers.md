@@ -1,5 +1,4 @@
 ---
-layout: post
 title: "Указатели в Python"
 date: 2021-08-06 00:00:00 -0000
 categories: 
