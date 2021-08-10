@@ -5,7 +5,7 @@ categories:
   - blog
 tags:
   - python
-  = API
+  - API
   - REST API
   - DRF
   - Flask 
