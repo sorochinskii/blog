@@ -1,8 +1,11 @@
 ---
 title: "Python и REST API: взаимодействие с веб-сервисами"
 date: 2021-08-10 00:00:00 -0000
+excerpt_separator: "<!--more-->"
+sidebar:
+    nav: "docs"
 categories: 
-  - blog
+  - Blog
 tags:
   - python
   - API
@@ -13,9 +16,9 @@ tags:
   - tutorial
 ---
 
-[Оригинальный текст Python and REST APIs: Interacting With Web Services?](https://realpython.com/api-integration-in-python/)
+Множество **веб-сервисов**, такие как YouTube и GitHub дают доступ к своим данным через **программный интерфейс приложения (application programming interface (API))**. Один из самых популярных способов построения API это архитектурный стиль **REST**  (от [англ.](https://ru.wikipedia.org/wiki/Английский_язык) **Re**presentational **S**tate **T**ransfer — «передача состояния представления»). Python имеет не только инструменты для получения данных от REST API, но также инструменты для построения собственных REST API.
 
-Множество **веб-сервисов**, такие как YouTube и GitHub дают доступ к своим данным через **программный интерфейс приложения (application programming interface (API))**. Один из самых популярных способов построения API это архитектурный стиль **REST**  (от [англ.](https://ru.wikipedia.org/wiki/Английский_язык) ***Re**presentational **S**tate **T**ransfer* — «передача состояния представления»). Python имеет не только инструменты для получения данных от REST API, но также инструменты для построения собственных REST API.
+<!--more-->
 
 **Этот пост покажет:**
 
@@ -26,6 +29,8 @@ tags:
 - Какие популярные инструменты Python используются для построения REST API.
 
 Используя Python и REST API можно извлекать, анализировать, обновлять и обрабатывать данные предоставляемые веб-сервисами.
+
+[Оригинальный текст Python and REST APIs: Interacting With Web Services?](https://realpython.com/api-integration-in-python/)
 
 ## REST-архитектура
 
