@@ -2,6 +2,8 @@
 title: "Указатели в Python"
 date: 2021-08-06 00:00:00 -0000
 excerpt_separator: "<!--more-->"
+toc: true
+toc_sticky: true
 categories: 
   - Blog
 tags:
