@@ -1,6 +1,8 @@
 ---
 title: "Python и REST API: взаимодействие с веб-сервисами"
 date: 2021-08-10 00:00:00 -0000
+toc: true
+toc_sticky: true
 excerpt_separator: "<!--more-->"
 sidebar:
     nav: "docs"
