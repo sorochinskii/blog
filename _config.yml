@@ -58,7 +58,7 @@ plugins:
 author:
   name   : "Aleksandr Sorochinskiy"
   avatar : "/assets/images/bio-photo.jpg"
-  bio    : "My awesome biography constrained to a sentence or two goes here."
+  bio    : "Немножко переводов зарубежных статей/туториалов на интересующие темы."
   links:
     - label: "GitHub"
       icon: "fab fa-fw fa-github"
