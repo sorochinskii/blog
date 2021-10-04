@@ -501,3 +501,263 @@ ValidationError: {'__all__': ['A virtual product weight cannot exceed zero.']}
 
 Классический вариант использования это хранение событий (логи, аналитика, хранилища событий). Большинство событий имеют дату, тип и метаданные, такие как устройств, юзер агент, пользователь и т.д. Данные для каждого типа хранятся и JSON-поле. Для аналитики и логов важна возможность добавления новых типов событий с минимальными затратами, поэтому полуструктурированная модель идеальна для этих случаев.
 
+## Абстрактная модель
+
+До сих пор вы размышляли над проблемой, думая о гетерогенной продукции. Вы предполагали, что различия между продукцией минимальный, поэтому имело смысл использовать одну модель. Это предположение может завести вас в тупик.
+
+Ваш маленький магазин растет быстро и вы хотите начать продавать совершенно разные типы продуктов, такие как планшеты, ручки, ноутбуки.
+
+Продукция определяется общими атрибутами, такими как название и цена. В объектно-ориентированной среде на `Product` можно взглянуть как на базовый класс или [интерфейс](https://realpython.com/python-interface/). Для каждого нового типа продукции вы должны реализовывать класс `Product` и расширять его с собственными атрибутами.
+
+Django дает возможность создавать  [абстрактные модели](https://docs.djangoproject.com/en/2.1/topics/db/models/#abstract-base-classes). Давайте определим абстрактный класс `Product` и добавим две модели для  `Book` и `EBook`:
+
+```python
+from django.contrib.auth import get_user_model
+from django.db import models
+
+class Product(models.Model):
+ class Meta: 
+    abstract = True 
+    name = models.CharField(
+        max_length=100,
+    )
+    price = models.PositiveIntegerField(
+        help_text='in cents',
+    )
+
+    def __str__(self) -> str:
+        return self.name
+
+class Book(Product):
+    weight = models.PositiveIntegerField(
+        help_text='in grams',
+    )
+
+class EBook(Product):
+    download_link = models.URLField()
+```
+
+Учтите, что `Book` и `EBook` наследуются от `Product`. Поля определенные в базовом классе `Product` наследуются, поэтому производным моделям `Book` и `EBook` не нужно их повторять.
+
+Для добавления новых продуктов, используются производные классы:
+
+```python
+>>> from abstract_base_model.models import Book
+>>> book = Book.objects.create(name='Python Tricks', price=1000, weight=200)
+>>> book
+<Book: Python Tricks>
+
+>>> ebook = EBook.objects.create(
+...     name='The Old Man and the Sea',
+...     price=1500,
+...     download_link='http://books.com/12345',
+... )
+>>> ebook
+<Book: The Old Man and the Sea>
+```
+
+Создадим модель `Cart` с полем `items` типа многие-ко-многим (`ManyToMany`) по отношению к `Product`:
+
+```python
+class Cart(models.Model):
+    user = models.OneToOneField(
+       get_user_model(),
+       primary_key=True,
+       on_delete=models.CASCADE,
+    )
+ 	items = models.ManyToManyField(Product)	
+```
+
+Если попробовать сослаться на поле `ManyToMany` абстрактной модели, получите следующую ошибку:
+
+```
+abstract_base_model.Cart.items: (fields.E300) Field defines a relation with model 'Product', which is either not installed, or is abstract.
+```
+
+Ограничения внешнего ключа позволяют указывать только на конкретную таблицу. Абстрактная модель `Product`существует только в тексте программы, а в базе данных таблицы `Product` вообще нет. Django ORM позволяет создавать таблицы только для производных моделей `Book` и `EBook`. Зная это, будем ссылкаться на `Books` и `EBooks` напрямую:
+
+```python
+class Cart(models.Model):
+    user = models.OneToOneField(
+        get_user_model(),
+        primary_key=True,
+        on_delete=models.CASCADE,
+    )
+ 	books = models.ManyToManyField(Book) ebooks = models.ManyToManyField(EBook)
+```
+
+Теперь и обычные книги и электронные можно добавлять в корзину:
+
+```python
+>>> user = get_user_model().objects.first()
+>>> cart = Cart.objects.create(user=user)
+>>> cart.books.add(book)
+>>> cart.ebooks.add(ebook)	
+```
+
+Теперь эта модель немного более сложна. Сделаем запрос суммы всех товаров в корзине:
+
+```python
+>>> from django.db.models import Sum
+>>> from django.db.models.functions import Coalesce
+>>> (
+...     Cart.objects
+...     .filter(pk=cart.pk)
+...     .aggregate(total_price=Sum( 
+...         Coalesce('books__price', 'ebooks__price') 
+...     )) 
+... )
+{'total_price': 1000}
+```
+
+По причине существования более одного типа книг, используется [`Coalesce`](https://docs.djangoproject.com/en/2.1/ref/models/database-functions/#coalesce) для получения цены книги или электронной книги для каждой строки.
+
+**Плюсы**
+
+- **Легче реализовать специфичную логику:** отдельная модель для каждой продукции делает проще реализацию, тестирование и обслуживание логики.
+
+**Минусы**
+
+- **Требуется множество внешних ключей:** для каждого типа продукции требуется отдельный внешний ключ.
+
+Ограничения внешнего ключа позволяют указывать только на конкретную таблицу. Абстрактная модель `Product`существует только в тексте программы, а в базе данных таблицы `Product` вообще нет. Django ORM позволяет создавать таблицы только для производных моделей `Book` и `EBook`. Зная это, будем ссылкаться на `Books` и `EBooks` напрямую:
+
+```python
+class Cart(models.Model):
+    user = models.OneToOneField(
+        get_user_model(),
+        primary_key=True,
+        on_delete=models.CASCADE,
+    )
+ 	books = models.ManyToManyField(Book) ebooks = models.ManyToManyField(EBook)
+```
+
+Теперь и обычные книги и электронные можно добавлять в корзину:
+
+```python
+>>> user = get_user_model().objects.first()
+>>> cart = Cart.objects.create(user=user)
+>>> cart.books.add(book)
+>>> cart.ebooks.add(ebook)	
+```
+
+Теперь эта модель немного более сложна. Сделаем запрос суммы всех товаров в корзине:
+
+```python
+>>> from django.db.models import Sum
+>>> from django.db.models.functions import Coalesce
+>>> (
+...     Cart.objects
+...     .filter(pk=cart.pk)
+...     .aggregate(total_price=Sum( 
+...         Coalesce('books__price', 'ebooks__price') 
+...     )) 
+... )
+{'total_price': 1000}
+```
+
+По причине существования более одного типа книг, используется [`Coalesce`](https://docs.djangoproject.com/en/2.1/ref/models/database-functions/#coalesce) для получения цены книги или электронной книги для каждой строки.
+
+**Плюсы**
+
+- **Легче реализовать специфичную логику:** отдельная модель для каждой продукции делает проще реализацию, тестирование и обслуживание логики.
+
+**Минусы**
+
+- **Требуется множество внешних ключей:** для каждого типа продукции требуется отдельный внешний ключ.
+- **Тяжело реализовать и обслуживать:** Операции над всеми типами продукции требуют проверки всех внешних ключей. Это добавляет сложности в код и делает разработку и тестирование сложнее.
+- **Очень тяжело масштабировать:** Новые типы продукции требуют дополнительных моделей. Управление множеством моделей может быть утомительным и сложномасштабируемым.
+
+**Варианты использования**
+
+Абстрактные классы это хороший выбор в случае использования несколько типов объектов, которым требуется очень разная логика.
+
+Интуитивным примером является пример моедлирования процесса оплаты для вашего онлайн магазина. Вы захотите принимать оплату кредитными картами, PayPal и в кредит. Каждый метод оплаты требует собственный процесс обработки и своей логики. Добавление нового типа оплаты не очень частая процедура и в ближайшем будущем вы этого делать не собираетесь.
+
+Вы создаете базовый класс обработки платежей с производными классами для обработки платежей по кредитной карте, PayPal и кредитных платежей. Для каждого из производных классов процесс платежа реализуется очень по-разному и не может иметь общего кода. В этом случае может возникнуть необходимость в конкретной обработке каждого процесса платежа.
+
+## Конкретная модель
+
+Django предлагает другой метод реализации [наследования](https://realpython.com/inheritance-composition-python/) в моделях. Вместо использования абстрактных классов существующих только в коде, можно сделать основной класс конкретным.
+
+"Конкретный" означает что базовый класс существует в базе данных как таблица, в отличие от абстрактного класса.
+
+С помощью абстрактной базовой модели невозможно ссылаться на несколько типов продуктов. Вы были вынуждены создать отношение «многие ко многим» для каждого типа продукта. Это усложняло выполнение задач в общих полях, например, получение общей цены всех предметов в корзине.
+
+При использовании конкретного базового класса, Django создаст таблицу в базе данных для модели `Product`, которая будет иметь все общие поля, определенные в базовой модели. Производные модели `Book` и `EBook` будут ссылаться на таблицу `Product` используя поля типа один-к-одному. Для ссылки на продукцию, необходимо создать внешний ключ в базовой модели:
+
+```python
+from django.contrib.auth import get_user_model
+from django.db import models
+
+class Product(models.Model):
+    name = models.CharField(
+        max_length=100,
+    )
+    price = models.PositiveIntegerField(
+        help_text='in cents',
+    )
+
+    def __str__(self) -> str:
+        return self.name
+
+class Book(Product):
+    weight = models.PositiveIntegerField()
+
+class EBook(Product):
+    download_link = models.URLField()
+```
+
+The only difference between this example and the previous one is that the `Product` model is not defined with `abstract=True`.
+
+Единственное отличие между этим примером и предыдущим, что модель `Product` не определено поле `abstract=True`.
+
+Для создания новых продуктов можно использовать производные `Book` и `EBook` напрямую:
+
+```shell
+>>> from concrete_base_model.models import Book, EBook
+>>> book = Book.objects.create(
+...     name='Python Tricks',
+...     price=1000,
+...     weight=200,
+... )
+>>> book
+<Book: Python Tricks>
+
+>>> ebook = EBook.objects.create(
+...     name='The Old Man and the Sea',
+...     price=1500,
+...     download_link='http://books.com/12345',
+... )
+>>> ebook
+<Book: The Old Man and the Sea>
+```
+
+В случае конкретного базового класса, интересно посмотреть что происходит на уровне базы данных. Давайте посмотрим на таблицы, созданные Django в базе данных:
+
+```sql
+> \d concrete_base_model_product
+
+Column |          Type          |                         Default
+--------+-----------------------+---------------------------------------------------------
+id     | integer                | nextval('concrete_base_model_product_id_seq'::regclass)
+name   | character varying(100) |
+price  | integer                |
+
+Indexes:
+ "concrete_base_model_product_pkey" PRIMARY KEY, btree (id)
+
+Referenced by:
+ TABLE "concrete_base_model_cart_items" CONSTRAINT "..." FOREIGN KEY (product_id) 
+ REFERENCES concrete_base_model_product(id) DEFERRABLE INITIALLY DEFERRED
+
+ TABLE "concrete_base_model_book" CONSTRAINT "..." FOREIGN KEY (product_ptr_id) 
+ REFERENCES concrete_base_model_product(id) DEFERRABLE INITIALLY DEFERRED
+
+ TABLE "concrete_base_model_ebook" CONSTRAINT "..." FOREIGN KEY (product_ptr_id) 
+ REFERENCES concrete_base_model_product(id) DEFERRABLE INITIALLY DEFERRED
+```
+
+Таблица продукции выглядит имеет два знакомых поля: имя и цена. Это общие поля, определенные в модели `Product`. Django также создал поле идентификатора.
+
+TO BE CONTINUED
